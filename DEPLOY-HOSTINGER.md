@@ -11,6 +11,28 @@ Use **MongoDB Atlas** for production (Hostinger does not provide local MongoDB).
 
 ---
 
+## Hostinger Git deploy (root directory `./`)
+
+Use these in **Build and output settings**:
+
+| Setting | Value |
+|---------|--------|
+| **Root directory** | `./` (repo root) |
+| **Package manager** | `npm` |
+| **Node version** | `18.x` or `20.x` |
+| **Build command** | `npm run build` |
+| **Output directory** | `backend/public` |
+| **Entry file** | `backend/server.js` |
+| **Start command** | `npm start` |
+
+Hostinger runs `npm install` at the root first. The root `postinstall` / `prebuild` scripts install **`frontend/`** and **`backend/`** dependencies (including Vite) before the build. If build still fails, set build command to:
+
+```bash
+npm run install:all && npm run build
+```
+
+---
+
 ## 1. Build locally (before every deploy)
 
 From the **project root** (needs both `frontend/` and `backend/`):
