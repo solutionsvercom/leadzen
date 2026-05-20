@@ -4,6 +4,11 @@ The React app is built into **`backend/public/`**. On Hostinger you deploy **onl
 
 Use **MongoDB Atlas** for production (Hostinger does not provide local MongoDB).
 
+1. **Database Access:** create a user and password.
+2. **Network Access:** add **`0.0.0.0/0`** so Hostinger can reach the cluster (or restrict to your server IP).
+3. Set **`MONGODB_URI`** to the `mongodb+srv://...` connection string (URL-encode special characters in the password).
+4. Set **`HOST=0.0.0.0`** in environment variables (default in `.env.example`).
+
 ---
 
 ## 1. Build locally (before every deploy)

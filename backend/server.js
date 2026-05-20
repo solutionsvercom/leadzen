@@ -11,6 +11,7 @@ const leadsRoutes = require('./routes/leads');
 const platformsRoutes = require('./routes/platforms');
 const adminRoutes = require('./routes/admin');
 const { seedPlatforms, seedSuperAdmin } = require('./services/seedDefaults');
+const { connectDatabase } = require('./db/connect');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -32,7 +33,11 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  const dbReady = mongoose.connection.readyState === 1;
+  res.json({
+    status: dbReady ? 'ok' : 'degraded',
+    database: dbReady ? 'connected' : 'disconnected',
+  });
 });
 
 app.use('/api/auth', authRoutes);
@@ -64,11 +69,8 @@ app.use((err, _req, res, _next) => {
 });
 
 async function start() {
-  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/lead-management';
-
   try {
-    await mongoose.connect(uri);
-    console.log('MongoDB connected');
+    await connectDatabase();
 
     const Lead = require('./models/Lead');
     const migrated = await Lead.updateMany(
@@ -92,6 +94,11 @@ async function start() {
     await seedSuperAdmin();
   } catch (err) {
     console.error('MongoDB connection failed:', err.message);
+    if (String(process.env.MONGODB_URI || '').startsWith('mongodb+srv://')) {
+      console.error(
+        'Atlas checklist: Network Access 0.0.0.0/0 (or Hostinger IP), correct user/password in MONGODB_URI, database name in the URI.'
+      );
+    }
     process.exit(1);
   }
 
