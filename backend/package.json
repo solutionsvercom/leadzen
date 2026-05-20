@@ -1,0 +1,23 @@
+{
+  "name": "lead-management-backend",
+  "version": "1.0.0",
+  "description": "Lead management API for social platform form leads",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node scripts/build-public.js",
+    "predev": "node scripts/free-port.js 5001",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.3",
+    "multer": "^1.4.5-lts.1",
+    "razorpay": "^2.9.6"
+  }
+}

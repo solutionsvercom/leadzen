@@ -1,0 +1,18 @@
+# Hostinger shared hosting — static frontend only (upload backend/public/ contents to public_html).
+# Use this ONLY if you host the API separately (e.g. Node on a subdomain). Same-domain deploy
+# via Node.js (see DEPLOY-HOSTINGER.md) does not need this file.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Optional: force HTTPS (uncomment when SSL is active)
+# <IfModule mod_rewrite.c>
+#   RewriteCond %{HTTPS} off
+#   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>

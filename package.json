@@ -1,0 +1,19 @@
+{
+  "name": "lead-management-software",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lead Management Portal — Express API + React frontend",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "install:backend": "npm install --prefix backend",
+    "install:frontend": "npm install --prefix frontend",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "build": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "start": "npm start --prefix backend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend"
+  }
+}
