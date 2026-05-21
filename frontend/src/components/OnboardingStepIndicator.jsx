@@ -7,13 +7,24 @@ export default function OnboardingStepIndicator({ step }) {
     return 'step';
   };
 
+  const labels = ['Details', 'Sheets', 'Payment'];
+
   return (
     <div className="step-indicator step-indicator-3" aria-label={`Onboarding step ${step} of 3`}>
-      <span className={cls(1)}>1</span>
+      <div className="step-indicator-item">
+        <span className={cls(1)}>1</span>
+        <span className="step-label">{labels[0]}</span>
+      </div>
       <span className="step-line" aria-hidden="true" />
-      <span className={cls(2)}>2</span>
+      <div className="step-indicator-item">
+        <span className={cls(2)}>2</span>
+        <span className="step-label">{labels[1]}</span>
+      </div>
       <span className="step-line" aria-hidden="true" />
-      <span className={cls(3)}>3</span>
+      <div className="step-indicator-item">
+        <span className={cls(3)}>3</span>
+        <span className="step-label">{labels[2]}</span>
+      </div>
     </div>
   );
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/AuthLayout';
 import OnboardingStepIndicator from '../components/OnboardingStepIndicator';
+import { readOnboardingDraft, saveOnboardingDraft } from '../utils/onboardingDraft';
 
 const PLATFORMS = [
   { value: 'instagram', label: 'Instagram' },
@@ -16,11 +17,21 @@ const emptyLink = () => ({ url: '', platform: 'instagram', label: '' });
 
 export default function OnboardingStep2() {
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const authenticated = !!user && !user.business?.onboardingComplete;
+
   const [links, setLinks] = useState([emptyLink()]);
   const [error, setError] = useState('');
   const [syncNotes, setSyncNotes] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (authenticated) return;
+    const draft = readOnboardingDraft(false);
+    if (draft?.sheetLinks?.length) {
+      setLinks(draft.sheetLinks);
+    }
+  }, [authenticated]);
 
   const updateLink = (index, field, value) => {
     setLinks((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
@@ -38,9 +49,22 @@ export default function OnboardingStep2() {
     setError('');
     setSyncNotes([]);
 
-    const validLinks = links.filter((l) => l.url.trim());
+    const validLinks = links
+      .filter((l) => l.url.trim())
+      .map((l) => ({
+        url: l.url.trim(),
+        platform: l.platform,
+        label: l.label?.trim() || '',
+      }));
+
     if (validLinks.length === 0) {
       setError('Add at least one Google Sheet link');
+      return;
+    }
+
+    if (!authenticated) {
+      saveOnboardingDraft({ sheetLinks: validLinks });
+      navigate('/onboarding/payment');
       return;
     }
 
@@ -59,13 +83,21 @@ export default function OnboardingStep2() {
     }
   };
 
+  if (!authenticated && !readOnboardingDraft(false)) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (authenticated && user?.business?.onboardingComplete) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <AuthLayout wide>
       <div className="auth-card auth-card-wide">
-        <OnboardingStepIndicator step={3} />
+        <OnboardingStepIndicator step={2} />
         <h2>Connect Google Form sheets</h2>
         <p className="muted">
-          Step 3 of 3 — Paste the Google Sheet link where your form responses are stored.
+          Step 2 of 3 — Paste the Google Sheet link where your form responses are stored, then continue to payment.
           Share each sheet as <strong>Anyone with the link can view</strong>.
         </p>
 
@@ -111,6 +143,7 @@ export default function OnboardingStep2() {
                   value={link.url}
                   onChange={(e) => updateLink(index, 'url', e.target.value)}
                   placeholder="https://docs.google.com/spreadsheets/d/..."
+                  required={index === 0}
                 />
               </label>
               <label>
@@ -142,9 +175,19 @@ export default function OnboardingStep2() {
           )}
 
           <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Importing leads...' : 'Finish setup & open dashboard'}
+            {loading
+              ? 'Importing leads...'
+              : authenticated
+                ? 'Finish setup & open dashboard'
+                : 'Continue to payment'}
           </button>
         </form>
+
+        {!authenticated && (
+          <p className="footer-link">
+            <Link to="/onboarding">← Back to business details</Link>
+          </p>
+        )}
       </div>
     </AuthLayout>
   );

@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Business = require('../models/Business');
 const auth = require('../middleware/auth');
 const { verifyRazorpaySignature, getAmountPaise, isRazorpayConfigured } = require('../utils/razorpayPayment');
+const { applySheetLinks } = require('../services/sheetLinks');
 
 const router = express.Router();
 
@@ -98,6 +99,7 @@ router.post('/register', async (req, res) => {
       name,
       username,
       password,
+      links,
       razorpay_order_id: orderId,
       razorpay_payment_id: paymentId,
       razorpay_signature: signature,
@@ -105,6 +107,10 @@ router.post('/register', async (req, res) => {
 
     if (!businessName?.trim() || !name?.trim() || !username?.trim() || !password) {
       return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    if (!Array.isArray(links) || links.length === 0) {
+      return res.status(400).json({ message: 'Add at least one Google Sheet link before payment' });
     }
 
     if (!orderId || !paymentId || !signature) {
@@ -140,6 +146,18 @@ router.post('/register', async (req, res) => {
       business: business._id,
       signUpPaymentRef: `rzp_${paymentId}`,
     });
+
+    try {
+      await applySheetLinks(business, links);
+      business.onboardingComplete = true;
+      await business.save();
+    } catch (linkErr) {
+      await User.deleteOne({ _id: user._id });
+      await Business.deleteOne({ _id: business._id });
+      return res.status(linkErr.status || 400).json({
+        message: linkErr.message || 'Invalid Google Sheet links',
+      });
+    }
 
     await user.populate('business');
     const token = signToken(user._id);

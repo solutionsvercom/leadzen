@@ -3,19 +3,9 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/AuthLayout';
-import OnboardingStepIndicator, { ONBOARDING_DRAFT_KEY } from '../components/OnboardingStepIndicator';
-
-function readDraft() {
-  try {
-    const raw = sessionStorage.getItem(ONBOARDING_DRAFT_KEY);
-    if (!raw) return null;
-    const d = JSON.parse(raw);
-    if (!d?.businessName || !d?.name || !d?.username || !d?.password) return null;
-    return d;
-  } catch {
-    return null;
-  }
-}
+import OnboardingStepIndicator from '../components/OnboardingStepIndicator';
+import { ONBOARDING_DRAFT_KEY } from '../components/OnboardingStepIndicator';
+import { readOnboardingDraft } from '../utils/onboardingDraft';
 
 function loadRazorpayScript() {
   return new Promise((resolve, reject) => {
@@ -61,14 +51,14 @@ async function uploadLogoFromDataUrl(dataUrl) {
 export default function OnboardingPayment() {
   const navigate = useNavigate();
   const { user, loading: authLoading, register } = useAuth();
-  const [draft, setDraft] = useState(() => readDraft());
+  const [draft, setDraft] = useState(() => readOnboardingDraft(true));
   const [paymentCfg, setPaymentCfg] = useState(null);
   const [cfgError, setCfgError] = useState('');
   const [error, setError] = useState('');
   const [payBusy, setPayBusy] = useState(false);
 
   useEffect(() => {
-    setDraft(readDraft());
+    setDraft(readOnboardingDraft(true));
   }, []);
 
   useEffect(() => {
@@ -88,6 +78,7 @@ export default function OnboardingPayment() {
           name: draft.name,
           username: draft.username,
           password: draft.password,
+          links: draft.sheetLinks,
           razorpay_order_id: rzpResponse.razorpay_order_id,
           razorpay_payment_id: rzpResponse.razorpay_payment_id,
           razorpay_signature: rzpResponse.razorpay_signature,
@@ -102,7 +93,7 @@ export default function OnboardingPayment() {
         }
 
         sessionStorage.removeItem(ONBOARDING_DRAFT_KEY);
-        navigate('/onboarding/sheets');
+        navigate('/dashboard');
       } catch (err) {
         setError(err.response?.data?.message || 'Could not create account after payment. Contact support.');
       } finally {
@@ -164,21 +155,26 @@ export default function OnboardingPayment() {
     return <Navigate to={user.business?.onboardingComplete ? '/dashboard' : '/onboarding/sheets'} replace />;
   }
 
-  if (!draft) {
+  if (!readOnboardingDraft(false)) {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (!draft) {
+    return <Navigate to="/onboarding/sheets" replace />;
   }
 
   const rupees = paymentCfg?.amountRupees ?? '—';
   const razorpayOk = paymentCfg?.razorpayEnabled === true;
+  const sheetCount = draft.sheetLinks?.length || 0;
 
   return (
     <AuthLayout>
       <div className="auth-card">
-        <OnboardingStepIndicator step={2} />
-        <h2>Pay &amp; continue</h2>
+        <OnboardingStepIndicator step={3} />
+        <h2>Pay &amp; create account</h2>
         <p className="muted">
-          Step 2 of 3 — Your account is created only after a <strong>successful Razorpay payment</strong> (UPI, card,
-          etc.). Use the Pay button below.
+          Step 3 of 3 — Your account is created only after a <strong>successful Razorpay payment</strong> (UPI, card,
+          etc.). We will import leads from your {sheetCount} sheet{sheetCount === 1 ? '' : 's'} after payment.
         </p>
 
         {cfgError && <p className="error banner">{cfgError}</p>}
@@ -202,8 +198,8 @@ export default function OnboardingPayment() {
               <strong>Amount:</strong> ₹{rupees}
             </p>
             <p className="muted" style={{ margin: '10px 0 0', fontSize: '0.88rem' }}>
-              Click <strong>Pay securely</strong> and complete payment in the Razorpay window. Only then will your
-              account be created and you can go to step 3 (Google Sheets).
+              Click <strong>Pay securely</strong> and complete payment in the Razorpay window. Your account and sheet
+              links will be saved together.
             </p>
           </div>
         )}
@@ -222,7 +218,7 @@ export default function OnboardingPayment() {
         </div>
 
         <p className="footer-link">
-          <Link to="/onboarding">← Back to business details</Link>
+          <Link to="/onboarding/sheets">← Back to Google Sheets</Link>
         </p>
       </div>
     </AuthLayout>

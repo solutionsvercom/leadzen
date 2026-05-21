@@ -5,9 +5,7 @@ const fs = require('fs');
 const auth = require('../middleware/auth');
 const Lead = require('../models/Lead');
 const Business = require('../models/Business');
-const { extractSheetId, extractGid } = require('../utils/googleSheets');
-const { syncAllSheets } = require('../services/syncLeads');
-const { isValidPlatform } = require('../utils/platforms');
+const { applySheetLinks } = require('../services/sheetLinks');
 
 const router = express.Router();
 
@@ -49,64 +47,10 @@ router.patch('/logo', auth, upload.single('logo'), async (req, res) => {
 
 router.post('/sheet-links', auth, async (req, res) => {
   try {
-    const { links } = req.body;
-
-    if (!Array.isArray(links) || links.length === 0) {
-      return res.status(400).json({ message: 'At least one Google Sheet link is required' });
-    }
-
-    const newLinks = [];
-    const seenSheetIds = new Set(
-      req.business.sheetLinks.map((link) => `${link.sheetId}:${link.gid || 'default'}`)
-    );
-
-    for (const item of links) {
-      const url = item.url?.trim();
-      const platform = item.platform?.toLowerCase();
-
-      if (!url || !platform || !(await isValidPlatform(platform))) {
-        return res.status(400).json({
-          message: 'Each link needs a valid URL and an enabled platform',
-        });
-      }
-
-      const sheetId = extractSheetId(url);
-      if (!sheetId) {
-        return res.status(400).json({ message: `Invalid Google Sheet URL: ${url}` });
-      }
-
-      const gid = extractGid(url) || undefined;
-      const dedupeKey = `${sheetId}:${gid || 'default'}`;
-
-      if (seenSheetIds.has(dedupeKey)) {
-        return res.status(400).json({
-          message:
-            'This Google Sheet is already added. Use one sheet (or tab) per platform — do not paste the same link multiple times.',
-        });
-      }
-
-      seenSheetIds.add(dedupeKey);
-
-      newLinks.push({
-        url,
-        platform,
-        sheetId,
-        gid,
-        label: item.label?.trim() || platform,
-      });
-    }
-
-    req.business.sheetLinks.push(...newLinks);
-    await req.business.save();
-
-    const syncResults = await syncAllSheets(req.business._id);
-
-    res.json({
-      sheetLinks: req.business.sheetLinks,
-      syncResults,
-    });
+    const { sheetLinks, syncResults } = await applySheetLinks(req.business, req.body.links);
+    res.json({ sheetLinks, syncResults });
   } catch (err) {
-    res.status(500).json({ message: err.message || 'Failed to save sheet links' });
+    res.status(err.status || 500).json({ message: err.message || 'Failed to save sheet links' });
   }
 });
 

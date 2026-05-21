@@ -307,6 +307,31 @@ a:hover {
   max-width: 40px;
 }
 
+.step-indicator-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 52px;
+}
+
+.step-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.step.active + .step-label,
+.step-indicator-item:has(.step.active) .step-label {
+  color: var(--primary);
+}
+
+.step-indicator-item:has(.step.done) .step-label {
+  color: #16a34a;
+}
+
 .payment-qr-missing {
   text-align: center;
   padding: 24px 16px;

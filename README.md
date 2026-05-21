@@ -4,9 +4,9 @@ Multi-user lead management for **Instagram**, **Facebook**, **YouTube**, and **W
 
 ## Features
 
-- **Onboarding step 1:** Business name, optional logo, your name, username, password (saved locally until payment)
-- **Onboarding step 2:** **Razorpay** checkout — account is created only after a verified successful payment (UPI, card, etc.).
-- **Onboarding step 3:** Paste Google Sheet URLs per platform; leads import automatically
+- **Onboarding step 1:** Business name, optional logo, your name, username, password
+- **Onboarding step 2:** Paste Google Sheet URLs per platform (saved in browser until payment)
+- **Onboarding step 3:** **Razorpay** checkout — account is created only after verified payment; sheet links are imported then
 - **Dashboard:** View leads by platform, search, and re-sync sheets
 - **Multi-tenant:** Each business account has isolated data
 
@@ -95,7 +95,7 @@ New users complete **step 2** only through **Razorpay Checkout**. The server ver
    - `RAZORPAY_KEY_SECRET`
    - `RAZORPAY_AMOUNT_PAISE` (amount in paise; minimum **100** = ₹1)
    - Optional: `RAZORPAY_BUSINESS_NAME`, `RAZORPAY_DESCRIPTION`
-3. Restart the backend. On step 2, the user clicks **Pay securely**, completes payment in the Razorpay window, then the app registers them and moves to **step 3** (Google Sheets).
+3. Restart the backend. On step 3, the user clicks **Pay securely**, completes payment in the Razorpay window, then the app registers them, imports sheet links, and opens the dashboard.
 
 ## API overview
 

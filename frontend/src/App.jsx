@@ -19,14 +19,6 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-function OnboardingGuard({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="page-loading">Loading...</div>;
-  if (!user) return <Navigate to="/onboarding" replace />;
-  if (user.business?.onboardingComplete) return <Navigate to="/dashboard" replace />;
-  return children;
-}
-
 export default function App() {
   const { user, loading, isSuperAdmin } = useAuth();
 
@@ -77,19 +69,19 @@ export default function App() {
       />
       <Route
         path="/onboarding"
-        element={user ? <Navigate to="/onboarding/sheets" replace /> : <OnboardingStep1 />}
-      />
-      <Route path="/onboarding/payment" element={<OnboardingPayment />} />
-      <Route
-        path="/onboarding/sheets"
         element={
-          <ProtectedRoute>
-            <OnboardingGuard>
-              <OnboardingStep2 />
-            </OnboardingGuard>
-          </ProtectedRoute>
+          user ? (
+            <Navigate
+              to={user.business?.onboardingComplete ? '/dashboard' : '/onboarding/sheets'}
+              replace
+            />
+          ) : (
+            <OnboardingStep1 />
+          )
         }
       />
+      <Route path="/onboarding/sheets" element={<OnboardingStep2 />} />
+      <Route path="/onboarding/payment" element={<OnboardingPayment />} />
       <Route
         path="/dashboard"
         element={

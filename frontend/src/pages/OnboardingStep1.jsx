@@ -83,8 +83,18 @@ export default function OnboardingStep1() {
         logoDataUrl: logoDataUrl || undefined,
       };
 
-      sessionStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(draft));
-      navigate('/onboarding/payment');
+      const existing = sessionStorage.getItem(ONBOARDING_DRAFT_KEY);
+      let sheetLinks;
+      try {
+        sheetLinks = existing ? JSON.parse(existing).sheetLinks : undefined;
+      } catch {
+        sheetLinks = undefined;
+      }
+      sessionStorage.setItem(
+        ONBOARDING_DRAFT_KEY,
+        JSON.stringify({ ...draft, ...(sheetLinks ? { sheetLinks } : {}) })
+      );
+      navigate('/onboarding/sheets');
     } catch {
       setError('Could not read logo file. Try another image or skip the logo.');
     } finally {
@@ -97,7 +107,7 @@ export default function OnboardingStep1() {
       <div className="auth-card">
         <OnboardingStepIndicator step={1} />
         <h2>Set up your business</h2>
-        <p className="muted">Step 1 of 3 — Business & account details (payment is next)</p>
+        <p className="muted">Step 1 of 3 — Business & account details (Google Sheets, then payment)</p>
 
         <form onSubmit={handleSubmit} className="form">
           <label>
@@ -179,7 +189,7 @@ export default function OnboardingStep1() {
           {error && <p className="error">{error}</p>}
 
           <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Saving...' : 'Continue to UPI payment'}
+            {loading ? 'Saving...' : 'Continue to Google Sheets'}
           </button>
         </form>
 
