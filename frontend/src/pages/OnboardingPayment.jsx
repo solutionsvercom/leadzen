@@ -68,8 +68,8 @@ export default function OnboardingPayment() {
       .catch(() => setCfgError('Could not load payment settings. Is the backend running?'));
   }, []);
 
-  const completeRegistration = useCallback(
-    async (rzpResponse) => {
+  const finishSignup = useCallback(
+    async (payload) => {
       setError('');
       setPayBusy(true);
       try {
@@ -79,9 +79,7 @@ export default function OnboardingPayment() {
           username: draft.username,
           password: draft.password,
           links: draft.sheetLinks,
-          razorpay_order_id: rzpResponse.razorpay_order_id,
-          razorpay_payment_id: rzpResponse.razorpay_payment_id,
-          razorpay_signature: rzpResponse.razorpay_signature,
+          ...payload,
         });
 
         if (draft.logoDataUrl) {
@@ -95,13 +93,17 @@ export default function OnboardingPayment() {
         sessionStorage.removeItem(ONBOARDING_DRAFT_KEY);
         navigate('/dashboard');
       } catch (err) {
-        setError(err.response?.data?.message || 'Could not create account after payment. Contact support.');
+        setError(err.response?.data?.message || 'Could not create account. Contact support.');
       } finally {
         setPayBusy(false);
       }
     },
     [draft, navigate, register]
   );
+
+  const continueWithBypass = useCallback(() => {
+    finishSignup({ paymentBypass: true });
+  }, [finishSignup]);
 
   const startRazorpayPayment = useCallback(async () => {
     if (!draft || !paymentCfg?.razorpayEnabled) return;
@@ -119,7 +121,11 @@ export default function OnboardingPayment() {
         description: data.description || 'New account signup',
         order_id: data.orderId,
         handler: async (response) => {
-          await completeRegistration(response);
+          await finishSignup({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
         },
         modal: {
           ondismiss: () => {
@@ -139,7 +145,15 @@ export default function OnboardingPayment() {
       setError(err.response?.data?.message || err.message || 'Could not start payment.');
       setPayBusy(false);
     }
-  }, [completeRegistration, draft, paymentCfg?.razorpayEnabled]);
+  }, [finishSignup, draft, paymentCfg?.razorpayEnabled]);
+
+  const handleContinue = useCallback(() => {
+    if (paymentCfg?.razorpayBypass) {
+      continueWithBypass();
+    } else {
+      startRazorpayPayment();
+    }
+  }, [paymentCfg?.razorpayBypass, continueWithBypass, startRazorpayPayment]);
 
   if (authLoading) {
     return (
@@ -164,7 +178,9 @@ export default function OnboardingPayment() {
   }
 
   const rupees = paymentCfg?.amountRupees ?? '—';
-  const razorpayOk = paymentCfg?.razorpayEnabled === true;
+  const razorpayLive = paymentCfg?.razorpayEnabled === true;
+  const razorpayBypass = paymentCfg?.razorpayBypass === true;
+  const canContinue = razorpayLive || razorpayBypass;
   const sheetCount = draft.sheetLinks?.length || 0;
 
   return (
@@ -173,33 +189,43 @@ export default function OnboardingPayment() {
         <OnboardingStepIndicator step={3} />
         <h2>Pay &amp; create account</h2>
         <p className="muted">
-          Step 3 of 3 — Your account is created only after a <strong>successful Razorpay payment</strong> (UPI, card,
-          etc.). We will import leads from your {sheetCount} sheet{sheetCount === 1 ? '' : 's'} after payment.
+          Step 3 of 3 — {razorpayBypass ? (
+            <>
+              <strong>Razorpay checkout</strong> (UPI, card, etc.) will apply once payment keys are added. For now you
+              can continue without being charged. We will import leads from your {sheetCount} sheet
+              {sheetCount === 1 ? '' : 's'} when you finish.
+            </>
+          ) : (
+            <>
+              Your account is created only after a <strong>successful Razorpay payment</strong>. We will import leads
+              from your {sheetCount} sheet{sheetCount === 1 ? '' : 's'} after payment.
+            </>
+          )}
         </p>
 
         {cfgError && <p className="error banner">{cfgError}</p>}
 
-        {paymentCfg && !razorpayOk && (
-          <div className="payment-qr-missing" style={{ marginBottom: 16 }}>
-            <p className="error">Verified payments are not configured.</p>
-            <p className="muted" style={{ fontSize: '0.9rem', marginTop: 8, marginBottom: 0 }}>
-              Add <code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code> from your{' '}
-              <a href="https://dashboard.razorpay.com/" target="_blank" rel="noopener noreferrer">
-                Razorpay Dashboard
-              </a>{' '}
-              (Settings → API Keys), restart the backend, then refresh this page.
-            </p>
-          </div>
-        )}
-
-        {razorpayOk && (
+        {paymentCfg && (
           <div className="info-box payment-info-box" style={{ marginBottom: 20 }}>
             <p style={{ margin: 0 }}>
               <strong>Amount:</strong> ₹{rupees}
+              {razorpayBypass && (
+                <span className="payment-bypass-badge"> — not charged until Razorpay is enabled</span>
+              )}
             </p>
             <p className="muted" style={{ margin: '10px 0 0', fontSize: '0.88rem' }}>
-              Click <strong>Pay securely</strong> and complete payment in the Razorpay window. Your account and sheet
-              links will be saved together.
+              {razorpayBypass ? (
+                <>
+                  Click <strong>Continue</strong> to create your account. Add <code>RAZORPAY_KEY_ID</code> and{' '}
+                  <code>RAZORPAY_KEY_SECRET</code> on the server and set <code>RAZORPAY_BYPASS=false</code> when you
+                  are ready for real payments.
+                </>
+              ) : (
+                <>
+                  Click <strong>Pay securely</strong> and complete payment in the Razorpay window. Your account and sheet
+                  links will be saved together.
+                </>
+              )}
             </p>
           </div>
         )}
@@ -210,10 +236,14 @@ export default function OnboardingPayment() {
           <button
             type="button"
             className="btn btn-primary btn-block"
-            disabled={payBusy || !razorpayOk}
-            onClick={startRazorpayPayment}
+            disabled={payBusy || !canContinue}
+            onClick={handleContinue}
           >
-            {payBusy ? 'Please wait…' : `Pay securely — ₹${rupees}`}
+            {payBusy
+              ? 'Please wait…'
+              : razorpayBypass
+                ? `Continue — ₹${rupees} (payment skipped)`
+                : `Pay securely — ₹${rupees}`}
           </button>
         </div>
 

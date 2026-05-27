@@ -344,6 +344,12 @@ a:hover {
   margin: 0;
 }
 
+.payment-bypass-badge {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
 .payment-actions {
   margin: 16px 0;
 }

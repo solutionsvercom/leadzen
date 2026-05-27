@@ -4,16 +4,23 @@ const Razorpay = require('razorpay');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const auth = require('../middleware/auth');
-const { verifyRazorpaySignature, getAmountPaise, isRazorpayConfigured } = require('../utils/razorpayPayment');
+const {
+  verifyRazorpaySignature,
+  getAmountPaise,
+  isRazorpayConfigured,
+  isPaymentBypass,
+} = require('../utils/razorpayPayment');
 const { applySheetLinks } = require('../services/sheetLinks');
 
 const router = express.Router();
 
 router.get('/payment-config', (_req, res) => {
-  const enabled = isRazorpayConfigured();
+  const bypass = isPaymentBypass();
+  const enabled = isRazorpayConfigured() && !bypass;
   const amountPaise = getAmountPaise();
   res.json({
     razorpayEnabled: enabled,
+    razorpayBypass: bypass,
     keyId: enabled ? process.env.RAZORPAY_KEY_ID.trim() : null,
     amountPaise,
     amountRupees: (amountPaise / 100).toFixed(2),
@@ -113,13 +120,20 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Add at least one Google Sheet link before payment' });
     }
 
-    if (!orderId || !paymentId || !signature) {
+    const bypass = isPaymentBypass();
+    const paymentBypass = req.body.paymentBypass === true;
+
+    if (paymentBypass && !bypass) {
+      return res.status(400).json({ message: 'Payment bypass is not enabled on this server.' });
+    }
+
+    if (bypass && paymentBypass) {
+      // Pre-launch: same Get Started UI; no Razorpay charge until keys are configured
+    } else if (!orderId || !paymentId || !signature) {
       return res.status(400).json({
         message: 'Complete the payment using the Pay button. Your account is only created after Razorpay confirms a successful payment.',
       });
-    }
-
-    if (!verifyRazorpaySignature(orderId, paymentId, signature)) {
+    } else if (!verifyRazorpaySignature(orderId, paymentId, signature)) {
       return res.status(400).json({
         message: 'Payment could not be verified. If money was debited, wait a moment and contact support with your payment ID.',
       });
@@ -144,7 +158,7 @@ router.post('/register', async (req, res) => {
       username: username.toLowerCase().trim(),
       password,
       business: business._id,
-      signUpPaymentRef: `rzp_${paymentId}`,
+      signUpPaymentRef: bypass && paymentBypass ? 'bypass_pending_razorpay' : `rzp_${paymentId}`,
     });
 
     try {

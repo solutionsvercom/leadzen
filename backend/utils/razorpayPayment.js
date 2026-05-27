@@ -23,7 +23,22 @@ function getAmountPaise() {
 function isRazorpayConfigured() {
   const id = (process.env.RAZORPAY_KEY_ID || '').trim();
   const secret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
-  return id.length > 0 && secret.length > 0;
+  const placeholder =
+    id.includes('xxxxxxxx') || secret === 'your_key_secret_here' || secret.length < 8;
+  return id.length > 0 && secret.length > 0 && !placeholder;
 }
 
-module.exports = { verifyRazorpaySignature, getAmountPaise, isRazorpayConfigured };
+/** Skip real Razorpay until keys are set (or RAZORPAY_BYPASS=true). Add keys + RAZORPAY_BYPASS=false for live payments. */
+function isPaymentBypass() {
+  const flag = String(process.env.RAZORPAY_BYPASS || '').trim().toLowerCase();
+  if (flag === 'true' || flag === '1' || flag === 'yes') return true;
+  if (flag === 'false' || flag === '0' || flag === 'no') return false;
+  return !isRazorpayConfigured();
+}
+
+module.exports = {
+  verifyRazorpaySignature,
+  getAmountPaise,
+  isRazorpayConfigured,
+  isPaymentBypass,
+};
